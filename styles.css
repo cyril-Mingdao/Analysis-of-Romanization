@@ -66,11 +66,12 @@ html, body {
 .back-icon { position: fixed; top: 10px; left: 10px; pointer-events: auto; }
 .topbar-right { position: fixed; top: 10px; right: 10px; display: flex; align-items: center; gap: 8px; pointer-events: auto; }
 .topbar .qcount {
-  position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+  position: fixed; top: 10px; left: 74px;
   pointer-events: none;
   background: transparent; border: none; box-shadow: none;
   padding: 6px 14px;
   font-size: 13px; color: #444444; white-space: nowrap;
+  text-align: left;
 }
 /* 圓形圖示按鈕：返回鈕放大為原本文字鈕的 1.5 倍大小 */
 .icon-btn {

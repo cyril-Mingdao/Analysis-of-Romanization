@@ -1,0 +1,147 @@
+* { box-sizing: border-box; font-family: 'tauhu-oo', "Microsoft JhengHei", "PMingLiU", "Noto Sans TC", sans-serif; }
+html, body {
+  margin: 0; padding: 0;
+  background: #FFFFFF;
+  color: #111111;
+  height: 100%;
+}
+
+/* 主視覺色票：黑 #111111／白 #FFFFFF／黃 #FFC400 */
+
+/* ===== Entry page：以不溢出可視畫面為原則，各尺寸依螢幕寬高自動縮放 ===== */
+.entry-wrap {
+  height: 100vh; width: 100vw; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: clamp(6px, 2vh, 24px);
+  padding: clamp(8px, 2vh, 20px);
+  background: #FFFFFF;
+}
+.entry-title {
+  font-size: clamp(20px, 6vh, 60px); font-weight: 700; letter-spacing: 2px;
+  color: #111111; text-align: center; margin: 0;
+}
+.entry-subtitle { font-size: clamp(11px, 2.4vh, 22px); color: #444444; margin: 0; text-align: center; }
+.entry-card {
+  background: #FFFFFF; border: 2px solid #111111; border-radius: 16px;
+  padding: clamp(12px, 2.5vh, 36px) clamp(14px, 3vw, 56px);
+  display: flex; flex-direction: column; gap: clamp(8px, 1.8vh, 24px);
+  align-items: center; width: min(1180px, 94vw); max-height: 84vh; overflow-y: auto;
+}
+.entry-label { font-size: clamp(12px, 2.4vh, 20px); color: #111111; }
+.count-grid {
+  display: flex; flex-wrap: wrap; gap: clamp(6px, 1vw, 16px); justify-content: center; width: 100%;
+}
+.count-btn {
+  min-width: 56px; padding: clamp(6px, 1.6vh, 15px) clamp(8px, 1.8vw, 22px);
+  font-size: clamp(12px, 2.4vh, 22px); font-weight: 600;
+  border-radius: 10px; border: 2px solid #111111; background: #FFFFFF; color: #111111;
+  cursor: pointer; transition: all .15s ease;
+}
+.count-btn:hover { background: #FFF3C4; }
+.count-btn.selected { background: #FFC400; color: #111111; border-color: #111111; }
+#modeGrid {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: clamp(6px, 1vw, 16px); width: 100%;
+}
+@media (max-aspect-ratio: 1/1) {
+  #modeGrid { grid-template-columns: repeat(3, 1fr); }
+}
+.start-btn {
+  margin-top: clamp(2px, 0.5vh, 8px); padding: clamp(8px, 2vh, 18px) clamp(20px, 6vw, 64px);
+  font-size: clamp(14px, 2.8vh, 26px); font-weight: 700;
+  border-radius: 12px; border: 2px solid #111111; background: #FFC400; color: #111111;
+  cursor: pointer; transition: transform .1s ease;
+}
+.start-btn:disabled { opacity: .35; cursor: not-allowed; }
+.start-btn:not(:disabled):hover { transform: scale(1.04); }
+.entry-progress { font-size: clamp(10px, 1.8vh, 15px); color: #666666; text-align: center; }
+
+/* ===== Practice page ===== */
+.practice-wrap {
+  height: 100vh; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 6px; padding: 6px; overflow: hidden;
+  background: #FFFFFF;
+}
+/* 懸浮於畫面左上／右上角的按鈕，不佔用版面空間 */
+.topbar { position: fixed; top: 10px; left: 10px; right: 10px; z-index: 20; pointer-events: none; }
+.back-icon { position: fixed; top: 10px; left: 10px; pointer-events: auto; }
+.topbar-right { position: fixed; top: 10px; right: 10px; display: flex; align-items: center; gap: 8px; pointer-events: auto; }
+.topbar .qcount {
+  position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+  pointer-events: none;
+  background: transparent; border: none; box-shadow: none;
+  padding: 6px 14px;
+  font-size: 13px; color: #444444; white-space: nowrap;
+}
+/* 圓形圖示按鈕：返回鈕放大為原本文字鈕的 1.5 倍大小 */
+.icon-btn {
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 1px solid #111111; background: rgba(255,255,255,.92);
+  box-shadow: 0 2px 8px rgba(0,0,0,.12); cursor: pointer; padding: 0;
+}
+.back-icon { width: 54px; height: 54px; }
+.back-icon svg { width: 26px; height: 26px; }
+.speaker-icon { width: 44px; height: 44px; }
+.speaker-icon svg { width: 22px; height: 22px; }
+.icon-btn:hover { background: #FFF3C4; }
+
+.pronounce-overlay {
+  position: fixed; inset: 0; z-index: 60; background: rgba(255,255,255,.98);
+  display: flex; align-items: center; justify-content: center;
+  padding: 12px; cursor: pointer;
+}
+/* 允許變形自動適配畫面，以不溢出可視範圍為原則；點擊畫面任一處即返回 */
+.pronounce-img { width: 96vw; height: 96vh; object-fit: fill; pointer-events: none; }
+
+.stage-outer { position: relative; width: 100%; flex: 1 1 auto; display: flex; align-items: center; justify-content: center; min-height: 0; overflow: hidden; }
+.slide-canvas {
+  position: absolute; top: 0; left: 0;
+  width: 1280px; height: 720px;
+  background: #FFFFFF;
+  border: 1px solid #111111;
+  border-radius: 8px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.18);
+  overflow: hidden;
+  transform-origin: top left;
+  cursor: pointer;
+  color: #111111;
+}
+.shape-el { position: absolute; display: flex; align-items: center; justify-content: center; }
+.shape-el .txt { width: 100%; white-space: pre-wrap; }
+
+.reveal-hidden { opacity: 0; }
+@keyframes wipeLeft { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes wipeRight { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0 0 0 0); } }
+@keyframes wipeUp { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes wipeDown { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.anim-wipeLeft { animation: wipeLeft .5s ease forwards; }
+.anim-wipeRight { animation: wipeRight .5s ease forwards; }
+.anim-wipeUp { animation: wipeUp .5s ease forwards; }
+.anim-wipeDown { animation: wipeDown .5s ease forwards; }
+.anim-fade { animation: fadeIn .5s ease forwards; }
+
+.callout-box { border-style: solid; border-radius: 6px; }
+.conn-line { position: absolute; }
+.conn-arrow { position: absolute; width: 0; height: 0; }
+
+.pptx-table { border-collapse: collapse; width: 100%; height: 100%; table-layout: fixed; }
+.pptx-table td { border: 1px solid #111111; text-align: center; vertical-align: middle; overflow: hidden; color: #111111; }
+
+.ctrl-bar { display: flex; gap: clamp(6px, 1.2vw, 16px); align-items: stretch; justify-content: center; flex: 0 0 auto; width: 100%; }
+.ctrl-btn {
+  flex: 1 1 0; min-width: 0;
+  padding: clamp(8px, 1.6vw, 16px) clamp(6px, 1.5vw, 18px);
+  font-size: clamp(13px, 2.2vw, 22px); font-weight: 600; border-radius: 8px;
+  border: 2px solid #111111; background: #FFFFFF; color: #111111; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ctrl-btn:hover { background: #FFF3C4; }
+.ctrl-btn.primary { background: #FFC400; border-color: #111111; color: #111111; }
+.ctrl-btn:disabled { opacity: .35; cursor: not-allowed; }
+.hint { font-size: 12px; color: #666666; flex: 0 0 auto; }
+.master-bg {
+  position: absolute; top: 0; left: 0; width: 1280px; height: 720px;
+  object-fit: fill;
+  pointer-events: none; user-select: none;
+}
+

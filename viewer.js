@@ -126,79 +126,161 @@ function buildCallout(sh) {
   return el;
 }
 
-// 母片圖片以 object-fit:fill 撐滿整個 1280x720 畫布後，圖片內容位置與原始 EMU 座標系統
-// 仍有些微落差（匯出圖片時邊界與原始投影片不完全一致）。以多組箭頭（對角線、水平、
-// 垂直共 4 處）分別取「與線段垂直方向」上真正有效的量測值重新校正求得平移量。
-const MASTER_ALIGN_DX = -2.3;
-const MASTER_ALIGN_DY = -9;
-function alignToMaster(x, y) {
-  return [x + MASTER_ALIGN_DX, y + MASTER_ALIGN_DY];
+/* ===== 母片黑色箭頭的實測幾何（1280x720 投影片座標） =====
+ * 直接對 master-bg.png 做「箭頭多邊形擬合」求得（以 anti-alias 灰階當覆蓋率、
+ * 4 倍超取樣，對 8 支黑色箭頭最小化殘差，殘差 RMS ≈ 0.03，等同亞像素精度）：
+ *   線身粗細 ≈ 7.4px、箭頭長 ≈ 22.2px、箭頭半寬 ≈ 11.2px。
+ * 原始 pptx 的紅色連接線座標在各投影片之間有 ±2px 抖動，且與母片圖片之間存在
+ * 約 0.98 倍的縮放差，單靠平移永遠對不準；故改為「吸附」到下列實測座標再繪製。
+ * tail = 線段起點，tip = 箭頭尖端；heads 記錄母片在哪一端有黑色箭頭符號。 */
+const MASTER_ARROW_GEOM = { shaft: 7.40, headLen: 22.20, headHalfWidth: 11.20 };
+const MASTER_ARROWS = [
+  { tail: [386.93, 418.97], tip: [233.89, 418.83], heads: 'tip'  }, // 2 → 1
+  { tail: [597.56, 419.26], tip: [444.56, 419.59], heads: 'tip'  }, // 4 → 2
+  { tail: [235.48, 541.61], tip: [388.42, 541.40], heads: 'tip'  }, // 7 → 3
+  { tail: [597.53, 542.81], tip: [444.53, 542.71], heads: 'tip'  }, // 8 → 3
+  { tail: [210.52, 443.32], tip: [210.42, 511.16], heads: 'tip'  }, // 1 → 7
+  { tail: [413.41, 508.55], tip: [413.63, 440.95], heads: 'tip'  }, // 3 → 2
+  { tail: [626.29, 518.65], tip: [626.34, 450.83], heads: 'both' }, // 8 ↕ 4（母片為雙箭頭）
+  { tail: [283.50, 474.66], tip: [240.18, 517.81], heads: 'tip'  }, // 5 ↘ 7
+];
+/* 紅色遮罩相對黑色箭頭的等距外擴量（px）。黑色邊緣本身帶約 1px 的 anti-alias 灰邊，
+ * 外擴 0.5px 足以蓋掉灰邊、實際可見的紅色溢出僅約半個 px。
+ * MASK_BASE_OVER 則是三角形底邊往線身方向多疊 0.7px（沿用同一條斜邊延伸，不改變外形），
+ * 專門補掉「箭頭底邊」那一列 anti-alias 灰線；經全域像素比對後殘留黑墨為 0。 */
+const MASK_MARGIN = 0.5;
+const MASK_BASE_OVER = 0.7;
+/* 母片有、但本題不該出現的箭頭符號，用底色抹掉。抹白區壓在白底上，外擴多一點不必付出
+ * 任何視覺代價；外擴 1.5px 後該處最亮到 255/255（0.5px 時還會殘一條 248/255 的細邊）。 */
+const MASK_ERASE_COLOR = '#FFFFFF';
+const MASK_ERASE_MARGIN = 1.5;
+
+/** 找出這條紅線對應的母片黑色箭頭（方向、長度、位置都相近才算數） */
+function matchMasterArrow(x1, y1, x2, y2) {
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  if (!len) return null;
+  const ux = (x2 - x1) / len, uy = (y2 - y1) / len;
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+  let best = null, bestDist = Infinity;
+  MASTER_ARROWS.forEach(m => {
+    const dx = m.tip[0] - m.tail[0], dy = m.tip[1] - m.tail[1];
+    const mlen = Math.hypot(dx, dy);
+    const dot = ux * (dx / mlen) + uy * (dy / mlen);
+    // 來源資料常以 flipH／flipV 反轉端點，方向相反也算同一支箭頭
+    if (Math.abs(dot) < 0.966) return;                  // 夾角需 < 15°
+    const ratio = len / mlen;
+    if (ratio < 0.7 || ratio > 1.45) return;
+    const d = Math.hypot(mx - (m.tail[0] + m.tip[0]) / 2, my - (m.tail[1] + m.tip[1]) / 2);
+    if (d > 40 || d >= bestDist) return;
+    bestDist = d; best = { master: m, aligned: dot > 0 };
+  });
+  return best;
 }
 
-function buildConnector(sh, isMaster) {
-  // 以旋轉線段呈現，正確支援水平／垂直／斜向（如 5→7 的右上到左下）箭頭
+/** 依實測幾何畫箭頭。tail→tip 為線段方向；opts 指定兩端各要不要畫箭頭符號，
+ *  以及要不要用底色抹掉母片原本畫在該端的黑色箭頭符號。
+ *  線身與箭頭沿輪廓等距外擴 MASK_MARGIN：尖端沿軸向延伸 δ/sinθ、半寬增加 δ/cosθ，
+ *  外擴後夾角不變，確保完整遮蔽母片黑色箭頭又不會明顯溢出。 */
+function buildArrow(tail, tip, opts) {
+  const g = MASTER_ARROW_GEOM;
+  const [tx, ty] = tail, [px, py] = tip;
+  const len = Math.hypot(px - tx, py - ty);
+  const angle = Math.atan2(py - ty, px - tx) * 180 / Math.PI;
+  const theta = Math.atan2(g.headHalfWidth, g.headLen);
+  /** 依外擴量算出三角形要畫多長多寬。底邊往回延伸 baseOver 並等比例放大半寬，
+   *  等於把同兩條斜邊往回延長，外形（夾角）完全不變 */
+  function triGeom(margin, baseOver) {
+    const grow = margin / Math.sin(theta);               // 尖端沿軸向的外擴量
+    const halfW = g.headHalfWidth + margin / Math.cos(theta);
+    const headLen = g.headLen + grow;
+    const triLen = headLen + baseOver;
+    return { len: triLen, halfW: halfW * triLen / headLen, baseAt: g.headLen + baseOver };
+  }
+  const T = triGeom(MASK_MARGIN, MASK_BASE_OVER);
+  const E = triGeom(MASK_ERASE_MARGIN, MASK_BASE_OVER + MASK_ERASE_MARGIN);
+  const thick = g.shaft + MASK_MARGIN * 2;
+
   const el = document.createElement('div');
   el.className = 'shape-el conn-line';
-  const color = (sh.line && sh.line.color) || '#FF0000';
-  // 樣式（線寬、箭頭符號大小）與母片黑色箭頭一致，題目箭頭不再另外加粗
-  const rawWidthPx = ((sh.line && sh.line.width) || 2) * PT2PX;
-  const lw = Math.max(rawWidthPx, 2);
-
-  let x1 = sh.x, y1 = sh.y, x2 = sh.x + sh.w, y2 = sh.y + sh.h;
-  if (sh.flipH) { const t = x1; x1 = x2; x2 = t; }
-  if (sh.flipV) { const t = y1; y1 = y2; y2 = t; }
-  if (!isMaster) {
-    // 對齊母片圖片內容的座標校正
-    [x1, y1] = alignToMaster(x1, y1);
-    [x2, y2] = alignToMaster(x2, y2);
-    // 題目箭頭縮短五分之一（兩端各內縮 1/10，維持置中）
-    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-    x1 = mx + (x1 - mx) * 0.8; y1 = my + (y1 - my) * 0.8;
-    x2 = mx + (x2 - mx) * 0.8; y2 = my + (y2 - my) * 0.8;
-  }
-  const dx = x2 - x1, dy = y2 - y1;
-  const length = Math.max(Math.hypot(dx, dy), lw);
-  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-
-  el.style.left = x1 + 'px';
-  el.style.top = (y1 - lw / 2) + 'px';
-  el.style.width = length + 'px';
-  el.style.height = lw + 'px';
-  el.style.background = color;
-  el.style.transformOrigin = '0 50%';
+  el.style.left = tx + 'px';
+  el.style.top = ty + 'px';
+  el.style.width = '0';
+  el.style.height = '0';
+  el.style.transformOrigin = '0 0';
   el.style.transform = `rotate(${angle}deg)`;
 
-  const headEnd = sh.line && sh.line.headEnd;
-  const tailEnd = sh.line && sh.line.tailEnd;
-  const hasHead = headEnd && headEnd !== 'none';
-  const hasTail = tailEnd && tailEnd !== 'none';
-  // 箭頭符號比例依附件 arrow.png 實測校正：箭頭長度約為線寬 2.69 倍、
-  // 箭頭最大寬度約為線寬 2.92 倍（實測像素：線寬13px、箭頭長35px、箭頭寬38px）；
-  // 題目箭頭另加一點點寬容度，避免因對齊誤差或形狀差異在邊緣露出母片黑色箭頭
-  const marginRatio = isMaster ? 1 : 1.12;
-  const headLen = lw * 2.69 * marginRatio;
-  const headHalfWidth = lw * 1.46 * marginRatio;
-
-  function addArrow(atStart) {
+  // 三角形以 clip-path 而非 CSS border 繪製：border-width 會被瀏覽器四捨五入到
+  // 整數像素，半寬與長度各會掉掉零點幾 px，剛好吃掉預留的遮蔽餘裕
+  function addTriangle(atStart, fill, t) {
     const tri = document.createElement('div');
     tri.className = 'conn-arrow';
     tri.style.position = 'absolute';
-    tri.style.top = '50%';
-    tri.style.transform = 'translateY(-50%)';
-    tri.style.borderTop = headHalfWidth + 'px solid transparent';
-    tri.style.borderBottom = headHalfWidth + 'px solid transparent';
-    if (atStart) {
-      tri.style.left = -headLen + 'px';
-      tri.style.borderRight = headLen + 'px solid ' + color;
-    } else {
-      tri.style.right = -headLen + 'px';
-      tri.style.borderLeft = headLen + 'px solid ' + color;
-    }
+    tri.style.top = (-t.halfW) + 'px';
+    tri.style.left = (atStart ? t.baseAt - t.len : len - t.baseAt) + 'px';
+    tri.style.width = t.len + 'px';
+    tri.style.height = (t.halfW * 2) + 'px';
+    tri.style.background = fill;
+    tri.style.clipPath = atStart
+      ? 'polygon(100% 0, 0 50%, 100% 100%)'   // 尖端朝線段起點
+      : 'polygon(0 0, 100% 50%, 0 100%)';     // 尖端朝線段終點
     el.appendChild(tri);
   }
-  if (hasHead) addArrow(true);
-  if (hasTail) addArrow(false);
+
+  // 先抹掉不該出現的母片箭頭符號，線身與紅色箭頭再蓋上去
+  if (opts.eraseTail) addTriangle(true, MASK_ERASE_COLOR, E);
+  if (opts.eraseTip) addTriangle(false, MASK_ERASE_COLOR, E);
+
+  // 線身：有畫箭頭的一端在「箭頭底邊」處收住，避免線身從三角形斜邊旁邊凸出去；
+  // 被抹掉箭頭的一端則延伸到原本的尖端位置，維持線段原有長度並收成平頭
+  const shaftStart = opts.headAtTail ? T.baseAt : -MASK_MARGIN;
+  const shaftEnd = opts.headAtTip ? len - T.baseAt : len + MASK_MARGIN;
+  const shaft = document.createElement('div');
+  shaft.style.position = 'absolute';
+  shaft.style.left = shaftStart + 'px';
+  shaft.style.top = (-thick / 2) + 'px';
+  shaft.style.width = Math.max(shaftEnd - shaftStart, 0) + 'px';
+  shaft.style.height = thick + 'px';
+  shaft.style.background = opts.color;
+  el.appendChild(shaft);
+
+  if (opts.headAtTail) addTriangle(true, opts.color, T);
+  if (opts.headAtTip) addTriangle(false, opts.color, T);
   return el;
+}
+
+function buildConnector(sh) {
+  const color = (sh.line && sh.line.color) || '#FF0000';
+  let x1 = sh.x, y1 = sh.y, x2 = sh.x + sh.w, y2 = sh.y + sh.h;
+  if (sh.flipH) { const t = x1; x1 = x2; x2 = t; }
+  if (sh.flipV) { const t = y1; y1 = y2; y2 = t; }
+  const headEnd = sh.line && sh.line.headEnd;
+  const tailEnd = sh.line && sh.line.tailEnd;
+  let atStart = !!(headEnd && headEnd !== 'none');   // 箭頭符號在 (x1,y1)
+  let atEnd = !!(tailEnd && tailEnd !== 'none');     // 箭頭符號在 (x2,y2)
+
+  const hit = matchMasterArrow(x1, y1, x2, y2);
+  if (!hit) {
+    // 目前 179 張投影片的 312 條連接線全部吸附得上，這裡只是保險：
+    // 對不上母片的線就照它自己的座標畫
+    return buildArrow([x1, y1], [x2, y2], { headAtTail: atStart, headAtTip: atEnd, color });
+  }
+  const m = hit.master;
+  // 把「原始線段的哪一端有箭頭」換算成「母片線段的哪一端有箭頭」
+  let headAtTip = hit.aligned ? atEnd : atStart;
+  let headAtTail = hit.aligned ? atStart : atEnd;
+  // 母片沒畫箭頭的那一端不畫（否則會凸出黑色箭頭之外）；
+  // 若換算後兩端都不畫（來源資料偶有端點反置），就退回母片的箭頭配置
+  const masterTip = true;                            // 母片一律在 tip 端有箭頭
+  const masterTail = m.heads === 'both';
+  headAtTip = headAtTip && masterTip;
+  headAtTail = headAtTail && masterTail;
+  if (!headAtTip && !headAtTail) { headAtTip = masterTip; headAtTail = masterTail; }
+  return buildArrow(m.tail, m.tip, {
+    headAtTail, headAtTip, color,
+    // 母片有、但本題不需要的箭頭符號用底色抹掉，才不會露出黑色又保住單向語意
+    eraseTail: masterTail && !headAtTail,
+    eraseTip: masterTip && !headAtTip,
+  });
 }
 
 function buildGenericShape(sh, slideNumber) {
@@ -228,10 +310,10 @@ function buildGenericShape(sh, slideNumber) {
   return el;
 }
 
-function buildShapeEl(sh, slideNumber, isMaster, allShapes) {
+function buildShapeEl(sh, slideNumber, allShapes) {
   if (sh.kind === 'table') return buildTable(sh);
   if (sh.prst === 'borderCallout1') return buildCallout(allShapes ? fitCalloutToCells(sh, allShapes) : sh);
-  if (sh.kind === 'cxn') return buildConnector(sh, isMaster);
+  if (sh.kind === 'cxn') return buildConnector(sh);
   return buildGenericShape(sh, slideNumber);
 }
 
@@ -267,7 +349,7 @@ class SlidePlayer {
     const animatedIds = new Set();
     this.data.steps.forEach(group => group.forEach(e => animatedIds.add(e.id)));
     this.data.shapes.forEach(sh => {
-      const el = buildShapeEl(sh, undefined, false, this.data.shapes);
+      const el = buildShapeEl(sh, undefined, this.data.shapes);
       el.dataset.spid = sh.id;
       if (animatedIds.has(sh.id)) {
         el.classList.add('reveal-hidden');

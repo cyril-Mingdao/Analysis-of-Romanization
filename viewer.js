@@ -134,15 +134,19 @@ function buildCallout(sh) {
  * 約 0.98 倍的縮放差，單靠平移永遠對不準；故改為「吸附」到下列實測座標再繪製。
  * tail = 線段起點，tip = 箭頭尖端；heads 記錄母片在哪一端有黑色箭頭符號。 */
 const MASTER_ARROW_GEOM = { shaft: 7.40, headLen: 22.20, headHalfWidth: 11.20 };
+/* v17 換用 pic3.png 當母片。pic3 的內容相對舊 master-bg 有極小的仿射差
+ * （x' = 1.002019x − 0.017、y' = 1.000936y − 0.572，殘差 < 0.02px），
+ * 最右側「8 ↕ 4」那支箭頭若沿用舊座標會偏約 1.2px、紅色遮罩蓋不滿。
+ * 下列座標即為套用該仿射後、對齊 pic3 的實測值。*/
 const MASTER_ARROWS = [
-  { tail: [386.93, 418.97], tip: [233.89, 418.83], heads: 'tip'  }, // 2 → 1
-  { tail: [597.56, 419.26], tip: [444.56, 419.59], heads: 'tip'  }, // 4 → 2
-  { tail: [235.48, 541.61], tip: [388.42, 541.40], heads: 'tip'  }, // 7 → 3
-  { tail: [597.53, 542.81], tip: [444.53, 542.71], heads: 'tip'  }, // 8 → 3
-  { tail: [210.52, 443.32], tip: [210.42, 511.16], heads: 'tip'  }, // 1 → 7
-  { tail: [413.41, 508.55], tip: [413.63, 440.95], heads: 'tip'  }, // 3 → 2
-  { tail: [626.29, 518.65], tip: [626.34, 450.83], heads: 'both' }, // 8 ↕ 4（母片為雙箭頭）
-  { tail: [283.50, 474.66], tip: [240.18, 517.81], heads: 'tip'  }, // 5 ↘ 7
+  { tail: [387.69, 418.79], tip: [234.35, 418.65], heads: 'tip'  }, // 2 → 1
+  { tail: [598.75, 419.08], tip: [445.44, 419.41], heads: 'tip'  }, // 4 → 2
+  { tail: [235.94, 541.55], tip: [389.19, 541.33], heads: 'tip'  }, // 7 → 3
+  { tail: [598.72, 542.75], tip: [445.41, 542.65], heads: 'tip'  }, // 8 → 3
+  { tail: [210.93, 443.16], tip: [210.83, 511.07], heads: 'tip'  }, // 1 → 7
+  { tail: [414.23, 508.45], tip: [414.45, 440.79], heads: 'tip'  }, // 3 → 2
+  { tail: [627.54, 518.56], tip: [627.59, 450.68], heads: 'both' }, // 8 ↕ 4（母片為雙箭頭）
+  { tail: [284.06, 474.53], tip: [240.65, 517.72], heads: 'tip'  }, // 5 ↘ 7
 ];
 /* 紅色遮罩相對黑色箭頭的等距外擴量（px）。黑色邊緣本身帶約 1px 的 anti-alias 灰邊，
  * 外擴 0.5px 足以蓋掉灰邊、實際可見的紅色溢出僅約半個 px。
@@ -342,7 +346,7 @@ class SlidePlayer {
     // 母片內容以原始圖片呈現於最底層（避免向量重建造成物件變形），
     // 題目物件在上層時會如原簡報設計般重疊、遮擋母片內容
     const bg = document.createElement('img');
-    bg.src = 'master-bg.png';
+    bg.src = 'pic3.png';
     bg.className = 'master-bg';
     bg.draggable = false;
     this.canvas.appendChild(bg);

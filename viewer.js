@@ -41,6 +41,16 @@ function buildTable(sh) {
   wrap.style.height = sh.h + 'px';
   const table = document.createElement('table');
   table.className = 'pptx-table';
+  // table-layout:fixed 沒有 colgroup 時會把欄寬均分，「變調」列的格線就對不上上方
+  // 「本調」表的音節分組（2、3、4 個字各有不同欄數）。改用原始 pptx 的欄寬比例。
+  const totalW = sh.cols.reduce((a, b) => a + b, 0) || 1;
+  const colgroup = document.createElement('colgroup');
+  sh.cols.forEach(w => {
+    const col = document.createElement('col');
+    col.style.width = (w / totalW) * 100 + '%';
+    colgroup.appendChild(col);
+  });
+  table.appendChild(colgroup);
   const totalH = sh.rowH.reduce((a, b) => a + b, 0) || 1;
   sh.rows.forEach((row, ri) => {
     const tr = document.createElement('tr');
@@ -252,11 +262,42 @@ function buildArrow(tail, tip, opts) {
   return el;
 }
 
-function buildConnector(sh) {
-  const color = (sh.line && sh.line.color) || '#FF0000';
+/** 連接線的實際端點（來源資料以 flipH／flipV 表達反轉） */
+function connectorEnds(sh) {
   let x1 = sh.x, y1 = sh.y, x2 = sh.x + sh.w, y2 = sh.y + sh.h;
   if (sh.flipH) { const t = x1; x1 = x2; x2 = t; }
   if (sh.flipV) { const t = y1; y1 = y2; y2 = t; }
+  return [x1, y1, x2, y2];
+}
+
+/** 這張投影片有幾條紅線吸附到同一支母片箭頭。
+ *  母片的「8 ↕ 4」是雙箭頭，一題同時要標 8→4 與 4→8 時就會撞在一起。 */
+function countSharingMaster(sh, master, allShapes) {
+  if (!allShapes) return 1;
+  let n = 0;
+  allShapes.forEach(o => {
+    if (o.kind !== 'cxn') return;
+    const e = connectorEnds(o);
+    const h = matchMasterArrow(e[0], e[1], e[2], e[3]);
+    if (h && h.master === master) n++;
+  });
+  return n || 1;
+}
+
+/** 原始座標相對母片中心線的垂直偏移量（正負代表左右／上下兩側） */
+function perpOffset(x1, y1, x2, y2, m) {
+  const dx = m.tip[0] - m.tail[0], dy = m.tip[1] - m.tail[1];
+  const mlen = Math.hypot(dx, dy);
+  const nx = -dy / mlen, ny = dx / mlen;           // 母片方向的法線
+  const cx = (x1 + x2) / 2 - (m.tail[0] + m.tip[0]) / 2;
+  const cy = (y1 + y2) / 2 - (m.tail[1] + m.tip[1]) / 2;
+  const d = cx * nx + cy * ny;
+  return [nx * d, ny * d];
+}
+
+function buildConnector(sh, allShapes) {
+  const color = (sh.line && sh.line.color) || '#FF0000';
+  const [x1, y1, x2, y2] = connectorEnds(sh);
   const headEnd = sh.line && sh.line.headEnd;
   const tailEnd = sh.line && sh.line.tailEnd;
   let atStart = !!(headEnd && headEnd !== 'none');   // 箭頭符號在 (x1,y1)
@@ -272,10 +313,23 @@ function buildConnector(sh) {
   // 把「原始線段的哪一端有箭頭」換算成「母片線段的哪一端有箭頭」
   let headAtTip = hit.aligned ? atEnd : atStart;
   let headAtTail = hit.aligned ? atStart : atEnd;
-  // 母片沒畫箭頭的那一端不畫（否則會凸出黑色箭頭之外）；
-  // 若換算後兩端都不畫（來源資料偶有端點反置），就退回母片的箭頭配置
   const masterTip = true;                            // 母片一律在 tip 端有箭頭
   const masterTail = m.heads === 'both';
+
+  // 同一支母片箭頭被兩條紅線共用（例如 8→4 與 4→8 同時出現）時，
+  // 不再兩條疊著畫，而是照原始 pptx 的座標往母片兩側平移，左右並排呈現。
+  if (countSharingMaster(sh, m, allShapes) > 1) {
+    const [ox, oy] = perpOffset(x1, y1, x2, y2, m);
+    if (!headAtTip && !headAtTail) headAtTip = true;  // 來源端點反置時的保險
+    return buildArrow([m.tail[0] + ox, m.tail[1] + oy], [m.tip[0] + ox, m.tip[1] + oy], {
+      headAtTail, headAtTip, color,
+      // 平移後沒有壓在母片黑箭頭上，不需要（也不該）抹底色
+      eraseTail: false, eraseTip: false,
+    });
+  }
+
+  // 母片沒畫箭頭的那一端不畫（否則會凸出黑色箭頭之外）；
+  // 若換算後兩端都不畫（來源資料偶有端點反置），就退回母片的箭頭配置
   headAtTip = headAtTip && masterTip;
   headAtTail = headAtTail && masterTail;
   if (!headAtTip && !headAtTail) { headAtTip = masterTip; headAtTail = masterTail; }
@@ -317,7 +371,7 @@ function buildGenericShape(sh, slideNumber) {
 function buildShapeEl(sh, slideNumber, allShapes) {
   if (sh.kind === 'table') return buildTable(sh);
   if (sh.prst === 'borderCallout1') return buildCallout(allShapes ? fitCalloutToCells(sh, allShapes) : sh);
-  if (sh.kind === 'cxn') return buildConnector(sh);
+  if (sh.kind === 'cxn') return buildConnector(sh, allShapes);
   return buildGenericShape(sh, slideNumber);
 }
 

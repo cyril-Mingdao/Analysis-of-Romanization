@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>拆解台語羅馬字</title>
 <link href="https://tauhu.tw/tauhu-oo.css" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=29">
+<link rel="stylesheet" href="styles.css?v=30">
 </head>
 <body>
 <button class="icon-btn speaker-icon" id="pronounceBtn" aria-label="發音對照表" title="發音對照表" style="position:fixed; top:10px; right:10px; z-index:20;">
@@ -22,7 +22,7 @@
   <h1 class="entry-title">拆解台語羅馬字</h1>
   <p class="entry-subtitle">台中明道中學 詹宗龍 製作</p>
   <div class="entry-card">
-    <div class="entry-label">出題模式</div>
+    <div class="entry-label">出題模式｜疊字型態</div>
     <div class="count-grid" id="modeGrid">
       <button class="count-btn selected" data-mode="random">亂數</button>
       <button class="count-btn" data-mode="AA">AA</button>
@@ -36,6 +36,11 @@
       <button class="count-btn" data-mode="ABCB">ABCB</button>
       <button class="count-btn" data-mode="ABCC">ABCC</button>
       <button class="count-btn" data-mode="ABCD">ABCD</button>
+    </div>
+    <div class="entry-label">出題模式｜特殊變調（與型態並存）</div>
+    <div class="count-grid" id="specialGrid">
+      <button class="count-btn" data-mode="--輕聲">--輕聲</button>
+      <button class="count-btn" data-mode="á前">á前</button>
     </div>
     <div class="entry-label">練習題數</div>
     <div class="count-grid" id="countGrid">
@@ -51,9 +56,9 @@
   </div>
 </div>
 
-<script src="data.js?v=29"></script>
-<script src="queue.js?v=29"></script>
-<script src="pronounce-data.js?v=29"></script>
+<script src="data.js?v=30"></script>
+<script src="queue.js?v=30"></script>
+<script src="pronounce-data.js?v=30"></script>
 <script>
   const pronounceBtn = document.getElementById('pronounceBtn');
   const pronounceOverlay = document.getElementById('pronounceOverlay');
@@ -71,14 +76,17 @@
   let selected = '3';
   let selectedMode = 'random';
   const modeGrid = document.getElementById('modeGrid');
+  const specialGrid = document.getElementById('specialGrid');
+  // 型態與特殊變調是同一組單選（互斥），所以兩個 grid 的按鈕合起來管理
+  const modeBtns = [...modeGrid.querySelectorAll('.count-btn'), ...specialGrid.querySelectorAll('.count-btn')];
   const grid = document.getElementById('countGrid');
   const startBtn = document.getElementById('startBtn');
   startBtn.disabled = false;
   const hint = document.getElementById('progressHint');
 
-  modeGrid.querySelectorAll('.count-btn').forEach(btn => {
+  modeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      modeGrid.querySelectorAll('.count-btn').forEach(b => b.classList.remove('selected'));
+      modeBtns.forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       selectedMode = btn.dataset.mode;
       updateHint();

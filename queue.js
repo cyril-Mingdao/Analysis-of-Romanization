@@ -1,3 +1,8 @@
+/*!
+ * 拆解台語羅馬字 — 臺語羅馬字聲母／韻母／聲調／變調互動教材
+ * Copyright © 2026 臺中明道中學 詹宗龍. All rights reserved.
+ * 版權所有。未經作者同意，請勿轉載、重製或修改。
+ */
 /* 題目抽取邏輯：確保「同一出題模式的題庫全部輪過一次後才會重複」 */
 const TOTAL_QUESTIONS = 179;
 const PATTERN_MODES = ['AA', 'AAA', 'AAB', 'ABA', 'ABB', 'AABB', 'AABC', 'ABAC', 'ABCB', 'ABCC', 'ABCD'];

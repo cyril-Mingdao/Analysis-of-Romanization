@@ -1,11 +1,18 @@
 <!DOCTYPE html>
+<!--
+  拆解台語羅馬字 — 臺語羅馬字聲母／韻母／聲調／變調互動教材
+  Copyright © 2026 臺中明道中學 詹宗龍. All rights reserved.
+  版權所有。未經作者同意，請勿轉載、重製或修改。
+-->
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
+<meta name="author" content="臺中明道中學 詹宗龍">
+<meta name="copyright" content="Copyright © 2026 臺中明道中學 詹宗龍. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>拆解台語羅馬字 - 練習中</title>
 <link href="https://tauhu.tw/tauhu-oo.css" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=35">
+<link rel="stylesheet" href="styles.css?v=36">
 </head>
 <body>
 <div class="practice-wrap">
@@ -40,10 +47,10 @@
   <img class="pronounce-img" id="pronounceImg" alt="發音對照表">
 </div>
 
-<script src="data.js?v=35"></script>
-<script src="queue.js?v=35"></script>
-<script src="viewer.js?v=35"></script>
-<script src="pronounce-data.js?v=35"></script>
+<script src="data.js?v=36"></script>
+<script src="queue.js?v=36"></script>
+<script src="viewer.js?v=36"></script>
+<script src="pronounce-data.js?v=36"></script>
 <script>
   const questions = JSON.parse(sessionStorage.getItem('taigi_current_questions') || '[]');
   let pos = parseInt(sessionStorage.getItem('taigi_current_pos') || '0', 10);

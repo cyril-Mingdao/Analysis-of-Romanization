@@ -69,7 +69,7 @@ html, body {
 /* 懸浮於畫面左上／右上角的按鈕，不佔用版面空間 */
 .topbar { position: fixed; top: 10px; left: 10px; right: 10px; z-index: 20; pointer-events: none; }
 .back-icon { position: fixed; top: 10px; left: 10px; pointer-events: auto; }
-.topbar-right { position: fixed; top: 10px; right: 10px; display: flex; align-items: center; gap: 8px; pointer-events: auto; }
+.topbar-right { position: fixed; top: 62px; right: 10px; display: flex; align-items: center; gap: 8px; pointer-events: auto; }
 .topbar .qcount {
   position: fixed; top: 10px; left: 74px;
   pointer-events: none;
@@ -89,8 +89,8 @@ html, body {
 .speaker-icon { width: 44px; height: 44px; }
 .speaker-icon svg { width: 22px; height: 22px; }
 .icon-btn:hover { background: #FFF3C4; }
-/* 懸浮全螢幕切換鈕：在發音鈕正下方，層級高於發音對照表，對照表開著時也能切換 */
-.fullscreen-icon { position: fixed; top: 62px; right: 10px; z-index: 70; width: 44px; height: 44px; }
+/* 懸浮全螢幕切換鈕：在右上角、發音鈕正上方，層級高於發音對照表，對照表開著時也能切換 */
+.fullscreen-icon { position: fixed; top: 10px; right: 10px; z-index: 70; width: 44px; height: 44px; }
 .fullscreen-icon svg { width: 22px; height: 22px; }
 
 .pronounce-overlay {

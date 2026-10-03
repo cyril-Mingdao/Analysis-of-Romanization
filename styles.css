@@ -15,7 +15,7 @@ html, body {
 
 /* ===== Entry page：以不溢出可視畫面為原則，各尺寸依螢幕寬高自動縮放 ===== */
 .entry-wrap {
-  height: 100vh; width: 100vw; overflow: hidden;
+  height: 100vh; height: 100dvh; width: 100vw; overflow: hidden;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: clamp(6px, 2vh, 24px);
   padding: clamp(8px, 2vh, 20px);
@@ -62,7 +62,7 @@ html, body {
 
 /* ===== Practice page ===== */
 .practice-wrap {
-  height: 100vh; display: flex; flex-direction: column; align-items: center;
+  height: 100vh; height: 100dvh; display: flex; flex-direction: column; align-items: center;
   justify-content: center; gap: 6px; padding: 6px; overflow: hidden;
   background: #FFFFFF;
 }
@@ -89,6 +89,9 @@ html, body {
 .speaker-icon { width: 44px; height: 44px; }
 .speaker-icon svg { width: 22px; height: 22px; }
 .icon-btn:hover { background: #FFF3C4; }
+/* 懸浮全螢幕切換鈕：在發音鈕左側，層級高於發音對照表，對照表開著時也能切換 */
+.fullscreen-icon { position: fixed; top: 10px; right: 62px; z-index: 70; width: 44px; height: 44px; }
+.fullscreen-icon svg { width: 22px; height: 22px; }
 
 .pronounce-overlay {
   position: fixed; inset: 0; z-index: 60; background: rgba(255,255,255,.98);
@@ -96,7 +99,7 @@ html, body {
   padding: 12px; cursor: pointer;
 }
 /* 允許變形自動適配畫面，以不溢出可視範圍為原則；點擊畫面任一處即返回 */
-.pronounce-img { width: 96vw; height: 96vh; object-fit: fill; pointer-events: none; }
+.pronounce-img { width: 96vw; height: 96vh; height: 96dvh; object-fit: fill; pointer-events: none; }
 
 .stage-outer { position: relative; width: 100%; flex: 1 1 auto; display: flex; align-items: center; justify-content: center; min-height: 0; overflow: hidden; }
 .slide-canvas {

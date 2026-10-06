@@ -4,7 +4,7 @@
  * 版權所有。未經作者同意，請勿轉載、重製或修改。
  */
 /* 題目抽取邏輯：確保「同一出題模式的題庫全部輪過一次後才會重複」 */
-const TOTAL_QUESTIONS = 179;
+const TOTAL_QUESTIONS = 178;
 const PATTERN_MODES = ['AA', 'AAA', 'AAB', 'ABA', 'ABB', 'AABB', 'AABC', 'ABAC', 'ABCB', 'ABCC', 'ABCD'];
 /* 特殊變調模式：依「教到什麼變調現象」而非疊字型態分類，與上面的型態類別並存
  * （同一題可以同時屬於 AABC 與 --輕聲），所以各自獨立過濾、互不排除 */
@@ -57,7 +57,7 @@ function slideTexts(s) {
 function matchesSpecial(s, mode) {
   const txt = slideTexts(s);
   if (mode === '--輕聲') {
-    // 標籤寫「--輕聲…」者即為輕聲題（第 2、65、177 張）
+    // 標籤寫「--輕聲…」者即為輕聲題（第 2、65、176 張）
     return txt.some(t => t.indexOf('輕聲') >= 0);
   }
   if (mode === 'á前') {
@@ -79,7 +79,7 @@ function getSpecialMap() {
   return map;
 }
 
-/** 依出題模式回傳可用的題號池；mode 為 falsy 或 'random' 時回傳全部 179 題 */
+/** 依出題模式回傳可用的題號池；mode 為 falsy 或 'random' 時回傳全部 178 題 */
 function poolForMode(mode) {
   const all = Array.from({ length: TOTAL_QUESTIONS }, (_, i) => i + 1);
   if (!mode || mode === 'random') return all;

@@ -5,7 +5,7 @@
  */
 /* 題目抽取邏輯：確保「同一出題模式的題庫全部輪過一次後才會重複」 */
 const TOTAL_QUESTIONS = 178;
-const PATTERN_MODES = ['AA', 'AAA', 'AAB', 'ABA', 'ABB', 'AABB', 'AABC', 'ABAC', 'ABCB', 'ABCC', 'ABCD'];
+const PATTERN_MODES = ['AA', 'AAA', 'AAB', 'ABA', 'ABB', 'ABC', 'AABB', 'AABC', 'ABAB', 'ABAC', 'ABCB', 'ABCC', 'ABCD'];
 /* 特殊變調模式：依「教到什麼變調現象」而非疊字型態分類，與上面的型態類別並存
  * （同一題可以同時屬於 AABC 與 --輕聲），所以各自獨立過濾、互不排除 */
 const SPECIAL_MODES = ['--輕聲', 'á前'];

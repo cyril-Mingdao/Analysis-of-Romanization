@@ -45,7 +45,7 @@ html, body {
 .count-btn:hover { background: #FFF3C4; }
 .count-btn.selected { background: #FFC400; color: #111111; border-color: #111111; }
 #modeGrid {
-  display: grid; grid-template-columns: repeat(6, 1fr); gap: clamp(6px, 1vw, 16px); width: 100%;
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: clamp(6px, 1vw, 16px); width: 100%;
 }
 @media (max-aspect-ratio: 1/1) {
   #modeGrid { grid-template-columns: repeat(3, 1fr); }

@@ -15,7 +15,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>拆解台語羅馬字</title>
 <link href="https://tauhu.tw/tauhu-oo.css" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=44">
+<link rel="stylesheet" href="styles.css?v=45">
 </head>
 <body>
 <button class="icon-btn speaker-icon" id="pronounceBtn" aria-label="發音對照表" title="發音對照表" style="position:fixed; top:62px; right:10px; z-index:20;">
@@ -40,8 +40,10 @@
       <button class="count-btn" data-mode="AAB">AAB</button>
       <button class="count-btn" data-mode="ABA">ABA</button>
       <button class="count-btn" data-mode="ABB">ABB</button>
+      <button class="count-btn" data-mode="ABC">ABC</button>
       <button class="count-btn" data-mode="AABB">AABB</button>
       <button class="count-btn" data-mode="AABC">AABC</button>
+      <button class="count-btn" data-mode="ABAB">ABAB</button>
       <button class="count-btn" data-mode="ABAC">ABAC</button>
       <button class="count-btn" data-mode="ABCB">ABCB</button>
       <button class="count-btn" data-mode="ABCC">ABCC</button>
@@ -66,10 +68,10 @@
   </div>
 </div>
 
-<script src="data.js?v=44"></script>
-<script src="queue.js?v=44"></script>
-<script src="pronounce-data.js?v=44"></script>
-<script src="fullscreen.js?v=44"></script>
+<script src="data.js?v=45"></script>
+<script src="queue.js?v=45"></script>
+<script src="pronounce-data.js?v=45"></script>
+<script src="fullscreen.js?v=45"></script>
 <script>
   const pronounceBtn = document.getElementById('pronounceBtn');
   const pronounceOverlay = document.getElementById('pronounceOverlay');

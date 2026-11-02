@@ -407,7 +407,7 @@ class SlidePlayer {
     // 母片內容以原始圖片呈現於最底層（避免向量重建造成物件變形），
     // 題目物件在上層時會如原簡報設計般重疊、遮擋母片內容
     const bg = document.createElement('img');
-    bg.src = 'pic4.png';
+    bg.src = 'pic4.png?v=47';
     bg.className = 'master-bg';
     bg.draggable = false;
     this.canvas.appendChild(bg);

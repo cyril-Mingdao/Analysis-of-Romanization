@@ -15,7 +15,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>拆解台語羅馬字</title>
 <link href="https://tauhu.tw/tauhu-oo.css" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=47">
+<link rel="stylesheet" href="styles.css?v=48">
 </head>
 <body>
 <button class="icon-btn speaker-icon" id="pronounceBtn" aria-label="發音對照表" title="發音對照表" style="position:fixed; top:62px; right:10px; z-index:20;">
@@ -49,8 +49,9 @@
       <button class="count-btn" data-mode="ABCC">ABCC</button>
       <button class="count-btn" data-mode="ABCD">ABCD</button>
     </div>
-    <div class="entry-label">出題模式｜特殊變調（與型態並存）</div>
+    <div class="entry-label">出題模式｜特殊變調</div>
     <div class="count-grid" id="specialGrid">
+      <button class="count-btn" data-mode="第9調">第9調</button>
       <button class="count-btn" data-mode="--輕聲">--輕聲</button>
       <button class="count-btn" data-mode="á前">á前</button>
     </div>
@@ -63,15 +64,18 @@
       <button class="count-btn" data-count="11">11 題</button>
       <button class="count-btn" data-count="all">全部</button>
     </div>
-    <button class="start-btn" id="startBtn" disabled>開始練習</button>
+    <div class="start-row">
+      <button class="start-btn" id="basicBtn" disabled>基礎變調</button>
+      <button class="start-btn" id="specialBtn" disabled>特殊變調</button>
+    </div>
     <div class="entry-progress" id="progressHint"></div>
   </div>
 </div>
 
-<script src="data.js?v=47"></script>
-<script src="queue.js?v=47"></script>
-<script src="pronounce-data.js?v=47"></script>
-<script src="fullscreen.js?v=47"></script>
+<script src="data.js?v=48"></script>
+<script src="queue.js?v=48"></script>
+<script src="pronounce-data.js?v=48"></script>
+<script src="fullscreen.js?v=48"></script>
 <script>
   const pronounceBtn = document.getElementById('pronounceBtn');
   const pronounceOverlay = document.getElementById('pronounceOverlay');
@@ -93,8 +97,8 @@
   // 型態與特殊變調是同一組單選（互斥），所以兩個 grid 的按鈕合起來管理
   const modeBtns = [...modeGrid.querySelectorAll('.count-btn'), ...specialGrid.querySelectorAll('.count-btn')];
   const grid = document.getElementById('countGrid');
-  const startBtn = document.getElementById('startBtn');
-  startBtn.disabled = false;
+  const basicBtn = document.getElementById('basicBtn');
+  const specialBtn = document.getElementById('specialBtn');
   const hint = document.getElementById('progressHint');
 
   modeBtns.forEach(btn => {
@@ -111,31 +115,40 @@
       grid.querySelectorAll('.count-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       selected = btn.dataset.count;
-      startBtn.disabled = false;
     });
   });
 
+  /** 一行提示：某練習種類在目前模式下的題庫進度 */
+  function hintLine(kind, label) {
+    const total = poolFor(kind, selectedMode).length;
+    const remaining = remainingInBag(kind, selectedMode);
+    return remaining < total ? `「${label}」尚有 ${remaining} / ${total} 題尚未練習過`
+                             : `「${label}」題庫共 ${total} 題`;
+  }
+
+  // 亂數：兩種練習都能開始；選了疊字型態只能練基礎變調，選了特殊變調類別只能練特殊變調
   function updateHint() {
-    const pool = poolForMode(selectedMode);
-    const remaining = remainingInBag(selectedMode);
-    const modeLabel = selectedMode === 'random' ? '全部' : selectedMode;
-    if (remaining < pool.length) {
-      hint.textContent = `「${modeLabel}」題庫尚有 ${remaining} / ${pool.length} 題尚未練習過`;
-    } else {
-      hint.textContent = `「${modeLabel}」題庫共 ${pool.length} 題，全部輪過一次後才會重複出題`;
-    }
+    const random = selectedMode === 'random';
+    basicBtn.disabled = !poolFor('basic', selectedMode).length;
+    specialBtn.disabled = !poolFor('special', selectedMode).length;
+    const lines = [];
+    if (!basicBtn.disabled) lines.push(hintLine('basic', random ? '基礎變調' : selectedMode));
+    if (!specialBtn.disabled) lines.push(hintLine('special', random ? '特殊變調' : selectedMode));
+    hint.textContent = lines.join('；') + '，全部輪過一次後才會重複出題';
   }
   updateHint();
 
-  startBtn.addEventListener('click', () => {
-    if (!selected) return;
-    const pool = poolForMode(selectedMode);
-    const n = selected === 'all' ? pool.length : parseInt(selected, 10);
-    const ids = selected === 'all' ? drawAllQuestions(selectedMode) : drawQuestions(n, selectedMode);
+  function start(kind) {
+    const pool = poolFor(kind, selectedMode);
+    if (!pool.length) return;
+    const ids = selected === 'all' ? drawAllQuestions(kind, selectedMode)
+                                   : drawQuestions(parseInt(selected, 10), kind, selectedMode);
     sessionStorage.setItem('taigi_current_questions', JSON.stringify(ids));
     sessionStorage.setItem('taigi_current_pos', '0');
     window.location.href = 'practice.html';
-  });
+  }
+  basicBtn.addEventListener('click', () => start('basic'));
+  specialBtn.addEventListener('click', () => start('special'));
 </script>
 </body>
 </html>

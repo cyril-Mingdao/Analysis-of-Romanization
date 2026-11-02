@@ -6,9 +6,9 @@
 /* 題目抽取邏輯：確保「同一出題模式的題庫全部輪過一次後才會重複」 */
 const TOTAL_QUESTIONS = 178;
 const PATTERN_MODES = ['AA', 'AAA', 'AAB', 'ABA', 'ABB', 'ABC', 'AABB', 'AABC', 'ABAB', 'ABAC', 'ABCB', 'ABCC', 'ABCD'];
-/* 特殊變調模式：依「教到什麼變調現象」而非疊字型態分類，與上面的型態類別並存
- * （同一題可以同時屬於 AABC 與 --輕聲），所以各自獨立過濾、互不排除 */
-const SPECIAL_MODES = ['--輕聲', 'á前'];
+/* 特殊變調模式：依「教到什麼變調現象」分類，與上面的疊字型態各自獨立——
+ * 屬於特殊變調的題目只出現在「特殊變調」練習，不會混進型態／基礎變調的題池 */
+const SPECIAL_MODES = ['第9調', '--輕聲', 'á前'];
 
 function shuffle(arr) {
   const a = arr.slice();
@@ -56,6 +56,10 @@ function slideTexts(s) {
 /** 判斷一張投影片是否屬於某個特殊變調類別 */
 function matchesSpecial(s, mode) {
   const txt = slideTexts(s);
+  if (mode === '第9調') {
+    // 標籤寫「9維持」者即為第 9 調題（AAA 疊字首字變第 9 調後維持）
+    return txt.some(t => t.indexOf('9維持') >= 0);
+  }
   if (mode === '--輕聲') {
     // 標籤寫「--輕聲…」者即為輕聲題（第 2、65、176 張）
     return txt.some(t => t.indexOf('輕聲') >= 0);
@@ -79,23 +83,46 @@ function getSpecialMap() {
   return map;
 }
 
-/** 依出題模式回傳可用的題號池；mode 為 falsy 或 'random' 時回傳全部 178 題 */
-function poolForMode(mode) {
+/** 該題屬於哪個特殊變調類別；不屬於任何類別回傳 null */
+function specialOf(i) {
+  const map = getSpecialMap();
+  for (const m of SPECIAL_MODES) if (map[m].indexOf(i) >= 0) return m;
+  return null;
+}
+
+/** 依練習種類（'basic' 基礎變調／'special' 特殊變調）與出題模式回傳題號池。
+ *  basic：排除所有特殊變調題，mode 為 'random' 時是全部基礎題，否則為該疊字型態。
+ *  special：mode 為 'random' 時是三類特殊變調的聯集，否則為該類別。 */
+function poolFor(kind, mode) {
   const all = Array.from({ length: TOTAL_QUESTIONS }, (_, i) => i + 1);
-  if (!mode || mode === 'random') return all;
-  if (SPECIAL_MODES.indexOf(mode) >= 0) return getSpecialMap()[mode].slice();
+  const random = !mode || mode === 'random';
+  if (kind === 'special') {
+    if (random) return all.filter(i => specialOf(i));
+    return SPECIAL_MODES.indexOf(mode) >= 0 ? getSpecialMap()[mode].slice() : [];
+  }
+  const basic = all.filter(i => !specialOf(i));
+  if (random) return basic;
+  if (SPECIAL_MODES.indexOf(mode) >= 0) return [];
   const map = getPatternMap();
-  return all.filter(i => map[i] === mode);
+  return basic.filter(i => map[i] === mode);
 }
 
-function bagKey(mode) {
-  return 'taigi_romaji_bag_v2_' + (mode || 'random');
+/** 亂數模式下用來判斷「題型不得重複」的鍵：基礎看疊字型態，特殊看變調類別；指定模式時不需要 */
+function typeKeyFn(kind, mode) {
+  if (mode && mode !== 'random') return null;
+  if (kind === 'special') return specialOf;
+  const map = getPatternMap();
+  return i => map[i];
 }
 
-function loadBag(mode) {
-  const pool = poolForMode(mode);
+function bagKey(kind, mode) {
+  return 'taigi_romaji_bag_v3_' + kind + '_' + (mode || 'random');
+}
+
+function loadBag(kind, mode) {
+  const pool = poolFor(kind, mode);
   try {
-    const raw = localStorage.getItem(bagKey(mode));
+    const raw = localStorage.getItem(bagKey(kind, mode));
     if (raw) {
       const bag = JSON.parse(raw).filter(x => pool.includes(x));
       if (bag.length) return bag;
@@ -104,37 +131,69 @@ function loadBag(mode) {
   return shuffle(pool);
 }
 
-function saveBag(mode, bag) {
-  localStorage.setItem(bagKey(mode), JSON.stringify(bag));
+function saveBag(kind, mode, bag) {
+  try { localStorage.setItem(bagKey(kind, mode), JSON.stringify(bag)); } catch (e) {}
 }
 
-/** 從尚未出現過的題袋中抽出 n 題（不重複），袋空時重新洗牌整組題池再續抽 */
-function drawQuestions(n, mode) {
-  const pool = poolForMode(mode);
+/** 從尚未出現過的題袋中抽出 n 題（不重複）。亂數模式下同一次練習的題型不重複，
+ *  題型全部用過一輪後才會再出現同一題型；袋空或袋中沒有可用題型時重新洗牌整組題池再續抽 */
+function drawQuestions(n, kind, mode) {
+  const pool = poolFor(kind, mode);
   if (!pool.length) return [];
-  let bag = loadBag(mode);
+  const keyOf = typeKeyFn(kind, mode);
+  const ok = (x, cycle, used) => !cycle.has(x) && !(keyOf && used.has(keyOf(x)));
+  let bag = loadBag(kind, mode);
   const picked = [];
+  let cycle = new Set();   // 本輪已抽過的題（題數大於題池時，整池輪完才重複）
+  let used = new Set();    // 本輪已用過的題型
   while (picked.length < n) {
-    if (bag.length === 0) {
-      let fresh = shuffle(pool);
-      const last = picked[picked.length - 1];
-      if (last !== undefined && fresh[0] === last && fresh.length > 1) {
-        [fresh[0], fresh[1]] = [fresh[1], fresh[0]];
-      }
-      bag = fresh;
+    if (cycle.size >= pool.length) cycle = new Set();
+    const left = pool.filter(x => !cycle.has(x));
+    if (keyOf && left.every(x => used.has(keyOf(x)))) used = new Set();
+    let idx = bag.findIndex(x => ok(x, cycle, used));
+    if (idx < 0) {
+      // 題袋裡沒有可用的題型了：把本輪還沒抽過的題洗牌補進袋尾
+      bag = bag.concat(shuffle(left.filter(x => !bag.includes(x))));
+      idx = bag.findIndex(x => ok(x, cycle, used));
     }
-    picked.push(bag.shift());
+    const q = bag.splice(idx, 1)[0];
+    picked.push(q);
+    cycle.add(q);
+    if (keyOf) used.add(keyOf(q));
   }
-  saveBag(mode, bag);
+  saveBag(kind, mode, bag);
   return picked;
 }
 
-/** 「全部」模式：直接回傳該出題模式題池的隨機排列（不影響題袋進度） */
-function drawAllQuestions(mode) {
-  return shuffle(poolForMode(mode));
+/** 「全部」：回傳題池的隨機排列（不影響題袋進度）。亂數模式下依題型輪流排，
+ *  每一輪各題型最多一題，相鄰兩題不會是同一題型（題型只剩一種時除外） */
+function drawAllQuestions(kind, mode) {
+  const pool = poolFor(kind, mode);
+  const keyOf = typeKeyFn(kind, mode);
+  if (!keyOf) return shuffle(pool);
+  const groups = {};
+  pool.forEach(i => { const k = keyOf(i); (groups[k] = groups[k] || []).push(i); });
+  Object.keys(groups).forEach(k => { groups[k] = shuffle(groups[k]); });
+  const out = [];
+  while (Object.keys(groups).length) {
+    let keys = shuffle(Object.keys(groups));
+    const last = out.length ? keyOf(out[out.length - 1]) : null;
+    // 下一輪若只剩一種題型，這輪就不要把它排在最後，免得接著出現同一題型
+    const carry = keys.filter(k => groups[k].length > 1);
+    if (carry.length === 1 && keys.length > 1) {
+      keys = keys.filter(k => k !== carry[0]);
+      keys.splice(keys[0] === last ? 1 : 0, 0, carry[0]);
+    }
+    if (keys.length > 1 && keys[0] === last) [keys[0], keys[1]] = [keys[1], keys[0]];
+    keys.forEach(k => {
+      out.push(groups[k].shift());
+      if (!groups[k].length) delete groups[k];
+    });
+  }
+  return out;
 }
 
 /** 目前題袋剩餘題數（尚未在本輪出現過的題目數） */
-function remainingInBag(mode) {
-  return loadBag(mode).length;
+function remainingInBag(kind, mode) {
+  return loadBag(kind, mode).length;
 }

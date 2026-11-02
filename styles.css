@@ -50,6 +50,7 @@ html, body {
 @media (max-aspect-ratio: 1/1) {
   #modeGrid { grid-template-columns: repeat(3, 1fr); }
 }
+.start-row { display: flex; flex-wrap: wrap; gap: clamp(8px, 1.6vw, 24px); justify-content: center; }
 .start-btn {
   margin-top: clamp(2px, 0.5vh, 8px); padding: clamp(8px, 2vh, 18px) clamp(20px, 6vw, 64px);
   font-size: clamp(14px, 2.8vh, 26px); font-weight: 700;

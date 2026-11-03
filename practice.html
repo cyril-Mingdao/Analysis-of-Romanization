@@ -15,7 +15,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>拆解台語羅馬字 - 練習中</title>
 <link href="https://tauhu.tw/tauhu-oo.css" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=48">
+<link rel="stylesheet" href="styles.css?v=49">
 </head>
 <body>
 <div class="practice-wrap">
@@ -50,17 +50,28 @@
   <img class="pronounce-img" id="pronounceImg" alt="發音對照表">
 </div>
 
-<script src="data.js?v=48"></script>
-<script src="queue.js?v=48"></script>
-<script src="viewer.js?v=48"></script>
-<script src="pronounce-data.js?v=48"></script>
-<script src="fullscreen.js?v=48"></script>
+<script src="data.js?v=49"></script>
+<script src="queue.js?v=49"></script>
+<script src="viewer.js?v=49"></script>
+<script src="pronounce-data.js?v=49"></script>
+<script src="fullscreen.js?v=49"></script>
 <script>
   const questions = JSON.parse(sessionStorage.getItem('taigi_current_questions') || '[]');
   let pos = parseInt(sessionStorage.getItem('taigi_current_pos') || '0', 10);
 
-  if (!questions.length) {
+  // 回選單：在入口頁的 iframe 中時交給入口頁關閉（不換頁才能維持全螢幕），單獨開啟時才換頁
+  function goMenu() {
+    try {
+      if (window.parent !== window && typeof window.parent.closePractice === 'function') {
+        window.parent.closePractice();
+        return;
+      }
+    } catch (err) { /* 跨來源時改用換頁 */ }
     window.location.href = 'index.html';
+  }
+
+  if (!questions.length) {
+    goMenu();
   }
 
   const canvas = document.getElementById('canvas');
@@ -94,7 +105,7 @@
       // 作答結束後不彈出提示，直接返回選單
       sessionStorage.removeItem('taigi_current_questions');
       sessionStorage.removeItem('taigi_current_pos');
-      window.location.href = 'index.html';
+      goMenu();
       return;
     }
     sessionStorage.setItem('taigi_current_pos', String(pos));
@@ -127,7 +138,7 @@
   allBtn.addEventListener('click', () => { if (player) player.revealAll(); });
   nextBtn.addEventListener('click', goNextQuestion);
   prevBtn.addEventListener('click', goPrevQuestion);
-  backBtn.addEventListener('click', () => { window.location.href = 'index.html'; });
+  backBtn.addEventListener('click', goMenu);
 
   pronounceBtn.addEventListener('click', (e) => {
     e.stopPropagation();

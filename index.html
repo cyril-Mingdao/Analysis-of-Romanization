@@ -15,7 +15,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>拆解台語羅馬字</title>
 <link href="https://tauhu.tw/tauhu-oo.css" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=48">
+<link rel="stylesheet" href="styles.css?v=49">
 </head>
 <body>
 <button class="icon-btn speaker-icon" id="pronounceBtn" aria-label="發音對照表" title="發音對照表" style="position:fixed; top:62px; right:10px; z-index:20;">
@@ -72,10 +72,10 @@
   </div>
 </div>
 
-<script src="data.js?v=48"></script>
-<script src="queue.js?v=48"></script>
-<script src="pronounce-data.js?v=48"></script>
-<script src="fullscreen.js?v=48"></script>
+<script src="data.js?v=49"></script>
+<script src="queue.js?v=49"></script>
+<script src="pronounce-data.js?v=49"></script>
+<script src="fullscreen.js?v=49"></script>
 <script>
   const pronounceBtn = document.getElementById('pronounceBtn');
   const pronounceOverlay = document.getElementById('pronounceOverlay');
@@ -145,8 +145,26 @@
                                    : drawQuestions(parseInt(selected, 10), kind, selectedMode);
     sessionStorage.setItem('taigi_current_questions', JSON.stringify(ids));
     sessionStorage.setItem('taigi_current_pos', '0');
-    window.location.href = 'practice.html';
+    openPractice();
   }
+
+  // 練習頁改在本頁的全版 iframe 中開啟、不換頁：換頁會讓瀏覽器自動退出全螢幕
+  let practiceFrame = null;
+  function openPractice() {
+    if (practiceFrame) practiceFrame.remove();
+    practiceFrame = document.createElement('iframe');
+    practiceFrame.className = 'practice-frame';
+    practiceFrame.title = '拆解台語羅馬字 - 練習中';
+    practiceFrame.src = 'practice.html?v=49';
+    practiceFrame.addEventListener('load', () => practiceFrame.contentWindow.focus());
+    document.body.appendChild(practiceFrame);
+  }
+  // 由練習頁呼叫：關閉 iframe 回到選單，並更新題庫進度提示
+  window.closePractice = function () {
+    if (practiceFrame) { practiceFrame.remove(); practiceFrame = null; }
+    updateHint();
+    window.focus();
+  };
   basicBtn.addEventListener('click', () => start('basic'));
   specialBtn.addEventListener('click', () => start('special'));
 </script>

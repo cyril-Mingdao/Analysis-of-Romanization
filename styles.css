@@ -159,3 +159,5 @@ html, body {
   pointer-events: none; user-select: none;
 }
 
+/* 入口頁內開啟練習頁的全版 iframe（不換頁，維持全螢幕） */
+.practice-frame { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; z-index: 100; background: #FFFFFF; }

@@ -5,7 +5,11 @@
  */
 // 懸浮「全螢幕」切換鈕：手機小螢幕時隱藏瀏覽器網址列，讓教材最大化顯示；再按一次恢復
 (function () {
-  const doc = document;
+  // 在入口頁的練習 iframe 裡時，切換的是外層入口頁的全螢幕（同來源才取得到）
+  let doc = document;
+  try {
+    if (window.parent !== window && window.parent.document) doc = window.parent.document;
+  } catch (err) { doc = document; }
   const root = doc.documentElement;
   const request = root.requestFullscreen || root.webkitRequestFullscreen;
   const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
@@ -17,10 +21,10 @@
   const ICON_EXIT = '<svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">'
     + '<path d="M9 4V9H4"/><path d="M20 9H15V4"/><path d="M15 20V15H20"/><path d="M4 15H9V20"/></svg>';
 
-  const btn = doc.createElement('button');
+  const btn = document.createElement('button');
   btn.className = 'icon-btn fullscreen-icon';
   btn.id = 'fullscreenBtn';
-  doc.body.appendChild(btn);
+  document.body.appendChild(btn);
 
   function isFull() { return !!(doc.fullscreenElement || doc.webkitFullscreenElement); }
   function render() {

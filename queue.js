@@ -90,6 +90,26 @@ function specialOf(i) {
   return null;
 }
 
+/* 亂數練習不出的詞（仍保留在指定型態練習與投影片瀏覽中）。
+ * 以投影片上的漢字比對，不寫死題號，投影片重新編號也不會失效 */
+const RANDOM_EXCLUDE_WORDS = ['無臭無潲'];
+
+let _randomExcludeCache = null;
+function randomExcluded(i) {
+  if (!_randomExcludeCache) {
+    _randomExcludeCache = new Set();
+    if (typeof SLIDES !== 'undefined') {
+      SLIDES.forEach(s => {
+        const txt = slideTexts(s);
+        if (RANDOM_EXCLUDE_WORDS.some(w => Array.from(w).every(ch => txt.indexOf(ch) >= 0))) {
+          _randomExcludeCache.add(s.i);
+        }
+      });
+    }
+  }
+  return _randomExcludeCache.has(i);
+}
+
 /** 依練習種類（'basic' 基礎變調／'special' 特殊變調）與出題模式回傳題號池。
  *  basic：排除所有特殊變調題，mode 為 'random' 時是全部基礎題，否則為該疊字型態。
  *  special：mode 為 'random' 時是三類特殊變調的聯集，否則為該類別。 */
@@ -97,11 +117,11 @@ function poolFor(kind, mode) {
   const all = Array.from({ length: TOTAL_QUESTIONS }, (_, i) => i + 1);
   const random = !mode || mode === 'random';
   if (kind === 'special') {
-    if (random) return all.filter(i => specialOf(i));
+    if (random) return all.filter(i => specialOf(i) && !randomExcluded(i));
     return SPECIAL_MODES.indexOf(mode) >= 0 ? getSpecialMap()[mode].slice() : [];
   }
   const basic = all.filter(i => !specialOf(i));
-  if (random) return basic;
+  if (random) return basic.filter(i => !randomExcluded(i));
   if (SPECIAL_MODES.indexOf(mode) >= 0) return [];
   const map = getPatternMap();
   return basic.filter(i => map[i] === mode);
